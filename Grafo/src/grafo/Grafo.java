@@ -1,6 +1,7 @@
 package grafo;
 
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.io.FileWriter;
 import java.io.IOException;
 
@@ -15,9 +16,13 @@ public class Grafo {
     static HashMap <Integer, Arista> conjAristas= new HashMap<>();
     //Usar este para búsqueda de aristas repetidas
     static HashMap <Integer, String> conj= new HashMap<>();
-    
+    //Conjunto R de aristas para método que obtiene el árbool DFS. 
+    static LinkedList <Arista> R = new LinkedList<>();
+    int aDFS=1; //contador para aristas en arbolDFS_R
     static String par1, par2, escritura; //para escribir el archivo .txt
-         
+    
+    /*----------MÉTODOS PARA LA GENERACIÓN DE GRAFOS ALEATORIOS----------*/   
+    
     public static Grafo genErdosRenyi(int n, int m,boolean diri,boolean auto) throws IOException 
     {
         Grafo objGrafo=new Grafo(); //crea el objeto grafo
@@ -119,7 +124,7 @@ public class Grafo {
                 }
             }
         }
-        Grafo.escribirTxt(m,diri,nameGrafo);  //crea el archivo grafoErdosRenyi.gv
+        escribirTxt(m,diri,nameGrafo);  //crea el archivo grafoErdosRenyi.gv
         return objGrafo;
     }
     
@@ -215,7 +220,7 @@ public class Grafo {
             }
         }        
         int m=conjAristas.size(); //calcula el número de aristas en el grafo
-        Grafo.escribirTxt(m,diri,nameGrafo);  //crea el archivo grafoGilbert.gv
+        escribirTxt(m,diri,nameGrafo);  //crea el archivo grafoGilbert.gv
         return objGrafo;
     }
     
@@ -325,7 +330,7 @@ public class Grafo {
             }
         }
         int m=conjAristas.size(); //calcula el número de aristas en el grafo
-        Grafo.escribirTxt(m,diri,nameGrafo);  //crea el archivo grafoGilbert.gv
+        escribirTxt(m,diri,nameGrafo);  //crea el archivo grafoGilbert.gv
         return objGrafo;
     }
     
@@ -391,7 +396,7 @@ public class Grafo {
         }
         
         int m=conjAristas.size(); //calcula el número de aristas en el grafo
-        Grafo.escribirTxt(m,diri,nameGrafo);  //crea el archivo grafoGilbert.gv
+        Grafo.escribirTxt(m,diri,nameGrafo);  //crea el archivo grafoGilbert.gv 
         return objGrafo;
     }
     
@@ -478,14 +483,266 @@ public class Grafo {
         return grado; //devuelve el grado del nodo j en cuestión
     }
     
+    /*---------MÉTODOS PARA GENERAR ÁRBOLES A PARTIR DE UN GRAFO DADO---------*/
+    
+    public Grafo BFS(String S) throws IOException
+    {   /*Existe un defecto en el método, solo maneja dos capas, la L[i] y la L[i+1].
+        Al final se construye el árbol, pero no se genera el conjunto de capas, solo
+        se guardan las últimas dos capas.*/
+        
+        //S es el nodo raíz (ID del nodo S de la forma "N# <- número de nodo")
+        /*Todo el método trabaja con el grafo "G" que llame al método, "G" fue
+        generado previamente por alguno de los métodos anteriores*/
+        Nodo nodoS = new Nodo(); //Nodo que se usa como raíz.      
+        Grafo arbolBFS = new Grafo(); //generar el objeto grafo de salida. 
+        R.clear(); //borrar el árbol formado por el método anterior.
+        LinkedList <Nodo> capaL= new LinkedList<>(); //Capa L[i]
+        LinkedList <Nodo> capaL1= new LinkedList<>(); //Capa L[i+1]                
+        String nameGrafo="arbolBFS"; //Nombre usado para escribir el archivo.                                              
+                
+        for(HashMap.Entry <Integer, Arista> i: conjAristas.entrySet())
+        {
+            /*Marcar todos los nodos del grafo como No explorados, 
+            a excepción del nodo "S"*/ 
+            Arista value= i.getValue();
+            String nod1=value.arista.get(1).IDnodo;
+            String nod2=value.arista.get(2).IDnodo;
+            //Este ciclo es necesario si se usan los tres métodos de árbol juntos.            
+            if(nod1.equals(S))
+            {
+                value.arista.get(2).explorado=false; //este orden es importante
+                value.arista.get(1).explorado=true;  //si se llegan a tener autociclos.             
+                nodoS=value.arista.get(1);
+            }
+            else if (nod2.equals(S))
+            {                
+                value.arista.get(1).explorado=false;
+                value.arista.get(2).explorado=true;
+                nodoS=value.arista.get(2);
+            }
+            else
+            {   //Again, esto es necesario porque se usó DFS_R o similar, previamente.
+                value.arista.get(1).explorado=false;
+                value.arista.get(2).explorado=false;
+            }   
+        }
+        listaAdy(); //Calcular la lista de nodos adyacentes de cada nodo en el grafo.                  
+        capaL.add(nodoS); //A la capa L[0] se le asigna el nodo S.                       
+        Nodo V = new Nodo(); //objeto para identificar al nodo "v"
+        int a=1; //contador de aristas para el árbol.
+        while(!capaL.isEmpty())
+        {                                      
+            capaL1.clear(); //Asignar la capa L[i+1] como vacía.                        
+            for (int j=0;j<capaL.size();j++)
+            {   //ciclo para cada nodo "u" perteneciente a la capa L[i]                                                
+                for (int i=0;i<capaL.get(j).adyList.size();i++)
+                {
+                    //Considerar cada arista (u,v) o (v,u)
+                    V=capaL.get(j).adyList.get(i);
+                    if (!V.explorado)
+                    {
+                        /*Si el nodo "v" no ha sido explorado, se marca como 
+                        explorado y  se agrega a la capa L[i+1]*/
+                        Arista aristaT = new Arista("A",a,capaL.get(j),V);
+                        R.add(aristaT); //crear y añadir la arista (u,v) al árbol.                   
+                        V.explorado=true; //marcar v como explorado 
+                        capaL1.add(V);
+                        a++;
+                    }
+                }                                
+            }
+            capaL.clear(); //tal vez esta acción hacía falta en el otro enfoque.
+            capaL.addAll(capaL1); //Copiar los elementos de la capa L[i+1] a la L[i]                    
+        }                
+        int m=R.size(); //calcula el número de aristas en el grafo        
+        escribirArbol(nameGrafo); //se escribe el .txt del árbol con un método especial.
+        System.out.println("Se construyo el Arbol BFS con "+m+" aristas");//el "false" es por NO Dirigido
+        return arbolBFS;                
+        
+    }
+    
+    public Grafo DFS_R(String u) throws IOException
+    {
+        //S es el nodo raíz (ID del nodo S de la forma "N# <- número de nodo")
+        /*Todo el método trabaja con el grafo "G" que llame al método, "G" fue
+        generado previamente por alguno de los métodos anteriores*/
+        Nodo nodoU = new Nodo();
+        nodoU.IDnodo=u;
+        Grafo arbolDFS = new Grafo(); //No estoy seguro de si se usa este obj. Grafo. 
+        String arbolName = "arbolDFS_R";
+        for(HashMap.Entry <Integer, Arista> i: conjAristas.entrySet())
+        {
+            /*Marca el nodo "u" como "Explorado", los demás se dejan intactos.
+            Es necesario hacerlo así por la llamada recursiva.*/ 
+            Arista value= i.getValue();
+            String nod1=value.arista.get(1).IDnodo;
+            String nod2=value.arista.get(2).IDnodo;
+            if (nod1.equals(u) && !value.arista.get(1).explorado)
+            {
+                value.arista.get(1).explorado=true;                
+            }
+            else if (nod2.equals(u) && !value.arista.get(2).explorado)
+            {
+                value.arista.get(2).explorado=true;                
+            }                 
+        } 
+        for(HashMap.Entry <Integer, Arista> i: conjAristas.entrySet())
+        {
+            /*Para cada arista (u,v)*/
+            Arista value= i.getValue();
+            String nod1=value.arista.get(1).IDnodo;
+            String nod2=value.arista.get(2).IDnodo;
+            if (nod1.equals(u))
+            {                
+                if (!value.arista.get(2).explorado)
+                {                    
+                    Arista aristaT= new Arista("A",aDFS,nodoU,value.arista.get(2));
+                    R.add(aristaT); //se añade la arista (u,v) al conjunto al conjunto del Árbol  
+                    aDFS++;         // "R" es un atributo de la clase Grafo.
+                    DFS_R(nod2); //llamada recursiva sobre nod2
+                }
+            }
+            else if (nod2.equals(u))
+            {                
+                if (!value.arista.get(1).explorado)
+                {                    
+                    Arista aristaT= new Arista("A",aDFS,nodoU,value.arista.get(1));
+                    R.add(aristaT); //se añade la arista (u,v) al conjunto del Árbol
+                    aDFS++;         // "R" es un atributo de la clase Grafo.   
+                    DFS_R(nod1); //llamada recursiva sobre nod1
+                }
+            }
+        }
+        /*Dado que se usa un atributo distinto (LinkedList R), no se puede usar el método
+        "escribirTxt" porque no será compatible, por eso se hace de forma "manual" aquí.*/
+        escribirArbol(arbolName);
+        int num=R.size();
+        System.out.println("Se construyo el Arbol DFS_R con  "+num+" aristas");
+        return arbolDFS;
+    }
+    
+    public Grafo DFS_I(String u) throws IOException
+    {
+        R.clear(); //Vaciar todo el conjunto R porque en el método Iterativo se usó.
+        Grafo arbolDFS = new Grafo();
+        String arbolName = "arbolDFS_I";
+        Nodo nodoU = new Nodo();
+        nodoU.IDnodo=u;        
+        LinkedList <Nodo> stackList = new LinkedList <> (); //Stack de nodos
+        for(HashMap.Entry <Integer, Arista> i: conjAristas.entrySet())
+        {
+            /*Marcar todos los nodos del grafo como No explorados, 
+            a excepción del nodo "S".*/
+            Arista value= i.getValue();
+            String nod1=value.arista.get(1).IDnodo;
+            String nod2=value.arista.get(2).IDnodo;
+            //ESTE CICLO ES NECESARIO SI SE USAN LOS 3 MÉTODOS DE ÁRBOL A LA VEZ.                
+            if(nod1.equals(u))
+            {
+                value.arista.get(2).explorado=false; //este orden es importante
+                value.arista.get(1).explorado=true;  //si se llegan a tener autociclos.             
+                nodoU=value.arista.get(1);
+            }
+            else if (nod2.equals(u))
+            {                
+                value.arista.get(1).explorado=false;
+                value.arista.get(2).explorado=true;
+                nodoU=value.arista.get(2);
+            }
+            else
+            {   //Again, esto es necesario porque se usó DFS_R previamente.
+                value.arista.get(1).explorado=false;
+                value.arista.get(2).explorado=false;
+            }                            
+        }                     
+        //Crear lista de adyacencia para cada nodo        
+        listaAdy();
+        stackList.add(nodoU); //añadir el nodo raiz al Stack
+        Nodo lastNodo = new Nodo(); //objeto para identificar al nodo al Final del Stack.
+        Nodo V = new Nodo();        //objeto para identificar al primero nodo en la lista de adyacencia.
+        int a=1; //contador aristas del árbol.
+        while (!stackList.isEmpty())
+        {     
+            lastNodo=stackList.getLast();            
+            if (!lastNodo.adyList.isEmpty()) //si el nodo tiene nodos adyacentes
+            {
+                V= lastNodo.adyList.getFirst();
+                if (!V.explorado) //si no ha sido explorado
+                {                    
+                   Arista aristaT = new Arista("A",a,lastNodo,V);
+                   R.add(aristaT); //crear y añadir la arista (u,v) al árbol.
+                   a++;
+                   V.explorado=true; //marcar v como explorado
+                   stackList.add(V); //añadir v al final del stack
+                }
+                lastNodo.adyList.removeFirst();
+            }
+            else
+            {
+                //si el nodo no tiene nodos adyacentes, remover del stack
+                stackList.removeLast();
+            }            
+            if (!stackList.isEmpty())
+            {
+                /*Si el stack sigue sin estar vacío, tomar el último nodo
+                para explorarlo a lo profundo. Esto "evita" la llamada recursiva
+                y hace la búsqueda a lo profundo.*/
+                lastNodo=stackList.getLast();
+            }
+        }
+        /*Dado que se usa un atributo distinto (LinkedList R), no se puede usar el método
+        "escribirTxt" porque no será compatible, por eso se hace de forma "manual" aquí.*/
+        escribirArbol(arbolName);
+        int num=R.size();
+        System.out.println("Se construyo el Arbol DFS_I con  "+num+" aristas");
+        return arbolDFS;
+    }
+    
+    public void listaAdy()
+    {
+        for (HashMap.Entry <Integer, Arista> i: conjAristas.entrySet()) 
+        {//asignar a cada nodo la lista de todos los nodos a los que está conectado
+            Arista value= i.getValue();
+            value.arista.get(1).adyList.add(value.arista.get(2));
+            value.arista.get(2).adyList.add(value.arista.get(1)); //Algunos valores se repiten            
+        }        
+    }
+    
+    public void escribirArbol (String nombre) throws IOException
+    {
+        FileWriter fileGrafo = new FileWriter("C:\\Users\\F5-573\\Desktop\\"+nombre+".gv");
+        fileGrafo.write("graph "+nombre+"\n{");        
+        int num=R.size();                       
+        for (int j=0;j<num;j++)
+        {
+            escritura=R.get(j).arista.get(1).IDnodo+
+            "--"+R.get(j).arista.get(2).IDnodo+";";
+
+            fileGrafo.write(escritura+"\n");
+            //System.out.println("Arista "+R.get(j).IDarista+" "+escritura);
+        }
+        fileGrafo.write("}");
+        fileGrafo.close(); //concluye la escritura del archivo
+    }
+    
     public static void main(String[] args) throws IOException 
     { /*excepción
         añadida por sugerencia de Java*/
-                    
+        Grafo grafoG = new Grafo();        
         //valores booleanos: dirigido, autociclos.
-        //genErdosRenyi(500,400,true,true);
-        //genGilbert(500,0.15,true,true);
-        //genGeografico(500,0.15,false,false);
-        genBarabasiAlbert(500,15,true,false);
+        //genErdosRenyi(100,120,false,false);
+        //genGilbert(500,0.15,false,false);
+        //genGeografico(500,0.3,false,false);
+        grafoG=genBarabasiAlbert(500,10,false,false);
+        
+        //Método para calcular los árboles.   (EL ORDEN EN QUE SE INVOCAN LOS MÉTODOS SÍ IMPORTA)    
+        grafoG.DFS_R("N1"); //Parece que ya trabajan bien en conjunto. Al menos obtienen el mismo número de aristas.
+        grafoG.DFS_I("N1");     
+        grafoG.BFS("N1"); //obtuve un caso en que BFS obtiene menos aristas que los dos anteriroes.                         
     }
 }
+
+/*Las asignaciones de un objeto a otro provocan que ambos objetos apunten a los mismos registros,
+por lo que lo que le pase a uno, le pasará al otro. Por eso, en algunos casos, es necesario
+resetear los parámetros de los nodos o las aristas en algunos métodos que se usan de forma
+simultánea.*/
