@@ -2,7 +2,6 @@
 package grafo;
 
 import java.util.HashMap;
-import java.util.Map;
 
 public class Arista {
     //Atributos de la clase
@@ -10,7 +9,13 @@ public class Arista {
     //un ID arista
     HashMap <Integer, Nodo> arista=new HashMap<>(); 
     String IDarista;
+    float peso;
     
+    //Métodos de la clase Arista
+    public Arista()
+    {
+        //constructor vacío 
+    }
     /*El constructor crea el la instancia de la clase
     Arista, que en este caso consiste en un objeto de tipo
     Map, con solo dos elementos correspondientes a la 
@@ -33,3 +38,4 @@ public class Arista {
     }
     
 }
+
